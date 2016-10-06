@@ -28,4 +28,4 @@ python coursera.py
 * **requests** - для работы с HTTP,
 * **beautifulsoup4** - для парсинга HTML,
 * **openpyxl** - для работы с  EXCEL.
-Пакеты устанавливается по команде `pip install -r requirements.txt`.
+Пакеты устанавливаются по команде `pip install -r requirements.txt`.
