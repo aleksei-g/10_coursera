@@ -152,8 +152,8 @@ if __name__ == '__main__':
     if namespace.file:
         filepath = namespace.file
     else:
-        filepath = input('Введите имя файла для выгрузки данных \
-                         в формате "xls" или "xlsx":\n')
+        filepath = input('Введите имя файла для выгрузки данных '
+                         'в формате "xls" или "xlsx":\n')
     if not check_filepath(filepath):
         sys.exit()
     courses_list = get_courses_list()
