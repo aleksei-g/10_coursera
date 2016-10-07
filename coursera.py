@@ -47,11 +47,11 @@ def check_filepath(filepath):
 
 
 def get_courses_list():
-    courses_list = []
     response = requests.get(URL_TO_COURSERA_XML, stream=True)
     response.raw.decode_content = True
     tree = etree.parse(response.raw)
     root = tree.getroot()
+    courses_list = []
     for num in range(NUMBER_ANALYZED_COURSES):
         num_elem = random.randrange(0, len(root)-1)
         courses_list.append(root[num_elem][0].text)
@@ -61,36 +61,30 @@ def get_courses_list():
 def get_tag_text(tag):
     if tag:
         return tag.text
-    else:
-        return ''
 
 
-def get_course_info(course_url):
-    name_course = ''
-    language_course = ''
-    starts_course = ''
-    number_weeks_course = ''
-    rating_course = ''
-    course_info = {}
-    response = requests.get(course_url)
-    response.encoding = 'utf-8'
-    page = response.text
-    soup = BeautifulSoup(page, 'lxml')
-    # имя курса
-    name_course = get_tag_text(soup.find('div', {'class':
-                                         'title display-3-text'}))
-    # рейтин курса
-    rating_course = get_tag_text(soup.find('div', {'class':
-                                           'ratings-text bt3-visible-xs'}))
-    # количество недель
-    number_weeks_course = len(soup.findAll('div', {'class': 'week'}))
-    # дата начала курса (находится в данных java-script)
+def get_name_course(soup):
+    return get_tag_text(soup.find('div', {'class': 'title display-3-text'}))
+
+
+def get_rating_course(soup):
+    return get_tag_text(soup.find('div', {'class':
+                                          'ratings-text bt3-visible-xs'}))
+
+
+def get_number_weeks_course(soup):
+    return len(soup.findAll('div', {'class': 'week'}))
+
+
+def get_starts_course(soup):
     text_json = get_tag_text(soup.find('script', {'type':
                                        'application/ld+json'}))
     if text_json:
         json_data = json.loads(text_json)
-        starts_course = json_data['hasCourseInstance'][0]['startDate']
-    # язык курса (находится в таблице)
+        return json_data['hasCourseInstance'][0]['startDate']
+
+
+def get_language_course(soup):
     table = soup.find('table', {'class':
                                 'basic-info-table bt3-table bt3-table-striped '
                                 'bt3-table-bordered bt3-table-responsive'})
@@ -100,37 +94,55 @@ def get_course_info(course_url):
             for col in row.find_all('td'):
                 all_cols.append(col.text)
         col_name_language = all_cols.index('Language')
-        if col_name_language:
-            language_course = all_cols[col_name_language+1]
-    # наполним словарь параметров курса полученной информацией
+        if col_name_language is not None:
+            return all_cols[col_name_language+1]
+
+
+def get_course_info(course_url):
+    response = requests.get(course_url)
+    response.encoding = 'utf-8'
+    page = response.text
+    soup = BeautifulSoup(page, 'lxml')
+    name_course = get_name_course(soup)
+    rating_course = get_rating_course(soup)
+    number_weeks_course = get_number_weeks_course(soup)
+    starts_course = get_starts_course(soup)
+    language_course = get_language_course(soup)
+    course_info = {}
     for name in ['name_course', 'language_course', 'starts_course',
                  'number_weeks_course', 'rating_course', 'course_url']:
         course_info[name] = eval(name)
     return course_info
 
 
+def get_thin_border():
+    return Border(left=Side(style='thin'),
+                  right=Side(style='thin'),
+                  top=Side(style='thin'),
+                  bottom=Side(style='thin'))
+
+
+def get_darkgray_fill():
+    return PatternFill(start_color='A9A9A9',
+                       end_color='A9A9A9',
+                       fill_type='solid')
+
+
+def get_lightgray_fill():
+    return PatternFill(start_color='D3D3D3',
+                       end_color='D3D3D3',
+                       fill_type='solid')
+
+
 def output_courses_info_to_xlsx(courses_info, filepath):
     wb = Workbook()
     sheet = wb.active
-    # параметры оформления
-    thin_border = Border(left=Side(style='thin'),
-                         right=Side(style='thin'),
-                         top=Side(style='thin'),
-                         bottom=Side(style='thin'))
-    darkgray_fill = PatternFill(start_color='A9A9A9',
-                                end_color='A9A9A9',
-                                fill_type='solid')
-    lightgray_fill = PatternFill(start_color='D3D3D3',
-                                 end_color='D3D3D3',
-                                 fill_type='solid')
-    # шапка таблицы
     for item in COLUMNS_ORDER.items():
         cell = sheet.cell(row=1, column=item[1][0])
         cell.value = item[1][1]
         cell.font = Font(bold=True)
-        cell.border = thin_border
-        cell.fill = darkgray_fill
-    # тело таблицы
+        cell.border = get_thin_border()
+        cell.fill = get_darkgray_fill()
     for row, course in enumerate(courses_info, start=2):
         for item in course.items():
             cell = sheet.cell(row=row, column=COLUMNS_ORDER[item[0]][0])
@@ -138,9 +150,9 @@ def output_courses_info_to_xlsx(courses_info, filepath):
                 cell.value = '=HYPERLINK("%s","%s")' % (item[1], TEXT_FOR_LINK)
             else:
                 cell.value = item[1]
-            cell.border = thin_border
+            cell.border = get_thin_border()
             if row % 2:
-                cell.fill = lightgray_fill
+                cell.fill = get_lightgray_fill()
     sheet.column_dimensions['A'].width = 50
     wb.save(filepath)
     return True
