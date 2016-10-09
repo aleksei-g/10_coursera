@@ -59,8 +59,7 @@ def get_courses_list():
 
 
 def get_tag_text(tag):
-    if tag:
-        return tag.text
+    return tag.text if tag else None
 
 
 def get_name_course(soup):
@@ -103,15 +102,13 @@ def get_course_info(course_url):
     response.encoding = 'utf-8'
     page = response.text
     soup = BeautifulSoup(page, 'lxml')
-    name_course = get_name_course(soup)
-    rating_course = get_rating_course(soup)
-    number_weeks_course = get_number_weeks_course(soup)
-    starts_course = get_starts_course(soup)
-    language_course = get_language_course(soup)
     course_info = {}
-    for name in ['name_course', 'language_course', 'starts_course',
-                 'number_weeks_course', 'rating_course', 'course_url']:
-        course_info[name] = eval(name)
+    course_info['name_course'] = get_name_course(soup)
+    course_info['rating_course'] = get_rating_course(soup)
+    course_info['number_weeks_course'] = get_number_weeks_course(soup)
+    course_info['starts_course'] = get_starts_course(soup)
+    course_info['language_course'] = get_language_course(soup)
+    course_info['course_url'] = course_url
     return course_info
 
 
