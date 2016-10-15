@@ -1,12 +1,10 @@
 import requests
 import random
-from lxml import etree
-import requests
+from xml.etree import ElementTree
 from bs4 import BeautifulSoup
 import json
 from openpyxl import Workbook
-from openpyxl.styles import Font, Border,  Side, Color, PatternFill
-from openpyxl.styles import colors
+from openpyxl.styles import Font, Border,  Side, PatternFill
 import os.path
 import argparse
 import sys
@@ -33,28 +31,22 @@ def create_parser():
     return parser
 
 
+def check_type_file(filepath):
+    root, ext = os.path.splitext(filepath)
+    return ext in ['.xls', '.xlsx']
+
+
 def check_filepath(filepath):
-    (dir_name, file_name) = os.path.split(os.path.abspath(filepath))
-    if os.path.exists(dir_name):
-        (root, ext) = os.path.splitext(filepath)
-        if ext not in ['.xls', '.xlsx']:
-            print('Файл должен быть формата "xls" или "xlsx".')
-            return False
-    else:
-        print('Каталог не существует!')
-        return False
-    return True
+    dir_name, file_name = os.path.split(os.path.abspath(filepath))
+    return os.path.exists(dir_name)
 
 
 def get_courses_list():
-    response = requests.get(URL_TO_COURSERA_XML, stream=True)
-    response.raw.decode_content = True
-    tree = etree.parse(response.raw)
-    root = tree.getroot()
+    response = requests.get(URL_TO_COURSERA_XML).content
+    tree = ElementTree.fromstring(response)
     courses_list = []
     for num in range(NUMBER_ANALYZED_COURSES):
-        num_elem = random.randrange(0, len(root)-1)
-        courses_list.append(root[num_elem][0].text)
+        courses_list.append(random.choice(tree)[0].text)
     return courses_list
 
 
@@ -97,10 +89,14 @@ def get_language_course(soup):
             return all_cols[col_name_language+1]
 
 
-def get_course_info(course_url):
-    response = requests.get(course_url)
+def get_site_page(url, payload=None):
+    response = requests.get(url, payload)
     response.encoding = 'utf-8'
-    page = response.text
+    return response.text
+
+
+def get_course_info(course_url):
+    page = get_site_page(course_url)
     soup = BeautifulSoup(page, 'lxml')
     course_info = {}
     course_info['name_course'] = get_name_course(soup)
@@ -164,7 +160,12 @@ if __name__ == '__main__':
         filepath = input('Введите имя файла для выгрузки данных '
                          'в формате "xls" или "xlsx":\n')
     if not check_filepath(filepath):
-        sys.exit()
+        print('Каталог не существует!')
+        sys.exit(1)
+    else:
+        if not check_type_file(filepath):
+            print('Файл должен быть формата "xls" или "xlsx".')
+            sys.exit(1)
     courses_list = get_courses_list()
     courses_info = [get_course_info(course) for course in courses_list]
     if output_courses_info_to_xlsx(courses_info, filepath):
